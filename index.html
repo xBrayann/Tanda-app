@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <meta name="description" content="Gestor de tanda - Control fácil de tandas">
+    <meta name="theme-color" content="#0d0f14">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Gestor de tanda</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
+</head>
+<body>
+    <!-- Splash / Loading -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <div class="splash-icon">💰</div>
+            <h1 class="splash-title">Gestor de tanda</h1>
+            <p class="splash-subtitle">Control de tandas</p>
+            <div class="splash-loader">
+                <div class="splash-loader-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app" class="app hidden">
+        
+        <!-- ========== HOME SCREEN ========== -->
+        <div id="screen-home" class="screen active">
+            <header class="app-header">
+                <div class="header-content">
+                    <div class="header-left">
+                        <span class="header-icon">💰</span>
+                        <div>
+                            <h1 class="header-title">Gestor de tanda</h1>
+                            <p class="header-subtitle" id="header-date"></p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main class="home-content">
+                <!-- Stats Bar -->
+                <div class="stats-bar" id="stats-bar">
+                    <div class="stat-card">
+                        <span class="stat-number" id="stat-tandas">0</span>
+                        <span class="stat-label">Tandas</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="stat-personas">0</span>
+                        <span class="stat-label">Personas</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="stat-progreso">0%</span>
+                        <span class="stat-label">Progreso</span>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="empty-state">
+                    <div class="empty-illustration">📋</div>
+                    <h2>No tienes tandas aún</h2>
+                    <p>Crea tu primera tanda para empezar a organizar tus pagos</p>
+                    <button class="btn btn-primary btn-glow" onclick="showCreateTanda()">
+                        <span class="btn-icon">+</span>
+                        Crear Primera Tanda
+                    </button>
+                </div>
+
+                <!-- Tanda Cards List -->
+                <div id="tandas-list" class="tandas-list hidden"></div>
+            </main>
+
+            <!-- FAB Button -->
+            <button id="fab-add" class="fab hidden" onclick="showCreateTanda()" title="Agregar tanda">
+                <span class="fab-icon">+</span>
+            </button>
+        </div>
+
+        <!-- ========== CREATE/EDIT TANDA SCREEN ========== -->
+        <div id="screen-create" class="screen">
+            <header class="app-header">
+                <div class="header-content">
+                    <button class="header-back" onclick="goHome()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h1 class="header-title" id="create-title">Nueva Tanda</h1>
+                    <div style="width:40px"></div>
+                </div>
+            </header>
+
+            <main class="create-content">
+                <form id="tanda-form" onsubmit="saveTanda(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="tanda-name">
+                            <span class="label-icon">🏷️</span> Nombre de la tanda
+                        </label>
+                        <input type="text" id="tanda-name" class="form-input" placeholder="Ej: Tanda del trabajo" required maxlength="40">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="tanda-amount">
+                            <span class="label-icon">💵</span> Monto por persona
+                        </label>
+                        <div class="input-with-prefix">
+                            <span class="input-prefix">$</span>
+                            <input type="number" id="tanda-amount" class="form-input" placeholder="500" required min="1">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="tanda-people">
+                                <span class="label-icon">👥</span> Personas
+                            </label>
+                            <input type="number" id="tanda-people" class="form-input" placeholder="10" required min="2" max="30">
+                            <span class="form-hint">Máx. 30</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="tanda-start">
+                                <span class="label-icon">📅</span> Fecha inicio
+                            </label>
+                            <input type="date" id="tanda-start" class="form-input" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <span class="label-icon">🔄</span> Frecuencia de entrega
+                        </label>
+                        <div class="frequency-options">
+                            <label class="freq-option">
+                                <input type="radio" name="frequency" value="weekly" checked>
+                                <span class="freq-label">Semanal</span>
+                            </label>
+                            <label class="freq-option">
+                                <input type="radio" name="frequency" value="biweekly">
+                                <span class="freq-label">Quincenal</span>
+                            </label>
+                            <label class="freq-option">
+                                <input type="radio" name="frequency" value="monthly">
+                                <span class="freq-label">Mensual</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Participants Section -->
+                    <div class="form-group" id="participants-section" style="display:none">
+                        <label class="form-label">
+                            <span class="label-icon">📝</span> Participantes
+                        </label>
+                        <p class="form-hint" style="margin-bottom: 12px">Escribe el nombre de cada participante. El número indica en qué turno recibirán.</p>
+                        <div id="participants-list" class="participants-list"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full btn-glow" id="btn-save-tanda">
+                        <span class="btn-icon">✓</span>
+                        Crear Tanda
+                    </button>
+                </form>
+            </main>
+        </div>
+
+        <!-- ========== TANDA DETAIL SCREEN ========== -->
+        <div id="screen-detail" class="screen">
+            <header class="app-header">
+                <div class="header-content">
+                    <button class="header-back" onclick="goHome()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h1 class="header-title" id="detail-title">Tanda</h1>
+                    <button class="header-action" id="btn-edit-tanda" onclick="editCurrentTanda()" title="Editar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Detail Info Bar -->
+            <div class="detail-info-bar" id="detail-info-bar">
+                <div class="detail-chip">
+                    <span class="chip-icon">👥</span>
+                    <span id="detail-people-count">0</span> personas
+                </div>
+                <div class="detail-chip">
+                    <span class="chip-icon">💵</span>
+                    $<span id="detail-amount">0</span>
+                </div>
+                <div class="detail-chip">
+                    <span class="chip-icon">📅</span>
+                    <span id="detail-frequency">Semanal</span>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend-bar">
+                <div class="legend-item">
+                    <span class="legend-dot legend-pending"></span> Pendiente
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot legend-paid"></span> Entregado
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot legend-received"></span> Recibido
+                </div>
+            </div>
+
+            <!-- Tanda Grid -->
+            <main class="detail-content">
+                <div class="grid-wrapper" id="grid-wrapper">
+                    <table class="tanda-grid" id="tanda-grid">
+                        <thead id="grid-head"></thead>
+                        <tbody id="grid-body"></tbody>
+                    </table>
+                </div>
+            </main>
+
+            <!-- Bottom Actions -->
+            <div class="detail-bottom-actions">
+                <button class="btn btn-share btn-sm" onclick="exportTandaPNG()" id="btn-export-png">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                    Exportar PNG
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="confirmDeleteTanda()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Eliminar
+                </button>
+            </div>
+
+            <!-- Hidden container for PNG capture -->
+            <div id="capture-container" style="position:absolute;left:-9999px;top:0;"></div>
+        </div>
+
+        <!-- ========== MODAL OVERLAY ========== -->
+        <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal()">
+            <div class="modal-card" onclick="event.stopPropagation()">
+                <h2 class="modal-title" id="modal-title">Confirmar</h2>
+                <p class="modal-message" id="modal-message">¿Estás seguro?</p>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                    <button class="btn btn-danger" id="modal-confirm" onclick="modalConfirmAction()">Eliminar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Container -->
+        <div id="toast-container" class="toast-container"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

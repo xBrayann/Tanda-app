@@ -1,0 +1,11 @@
+{
+    "name": "Gestor de tanda",
+    "short_name": "Gestor de tanda",
+    "description": "Control de tandas fácil y rápido",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#0d0f14",
+    "theme_color": "#0d0f14",
+    "orientation": "portrait",
+    "icons": []
+}
