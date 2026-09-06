@@ -802,7 +802,8 @@ body {
     -webkit-overflow-scrolling: touch;
     max-height: calc(100vh - 250px);
     max-height: calc(100dvh - 250px);
-    padding: 0 10px;
+    padding: 0;
+    margin: 0;
     -webkit-overflow-scrolling: touch;
 }
 
@@ -841,11 +842,13 @@ body {
 .tanda-grid th:first-child {
     position: sticky;
     left: 0;
-    z-index: 15;
+    z-index: 20;
     text-align: left;
     min-width: 130px;
-    border-right: 1px solid var(--border);
-    background: var(--bg-deep);
+    background: var(--bg-deep) !important;
+    border-right: 2px solid rgba(235, 168, 50, 0.25);
+    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.45);
+    padding-left: 10px;
 }
 
 .tanda-grid th.date-header { min-width: 68px; }
@@ -873,13 +876,19 @@ body {
 .tanda-grid td:first-child {
     position: sticky;
     left: 0;
-    z-index: 5;
-    background: var(--bg-deep);
+    z-index: 6;
+    background: var(--bg-deep) !important;
     text-align: left;
-    padding-left: 8px;
+    padding-left: 10px;
     padding-right: 8px;
     font-weight: 500;
-    border-right: 1px solid var(--border);
+    border-right: 2px solid rgba(235, 168, 50, 0.25);
+    box-shadow: 4px 0 8px rgba(0, 0, 0, 0.45);
+}
+
+.tanda-grid th:last-child,
+.tanda-grid td:last-child {
+    padding-right: 16px;
 }
 
 .tanda-grid tbody tr:active td {
@@ -1332,4 +1341,194 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     .form-row {
         grid-template-columns: 1fr;
     }
+}
+
+/* ---- PWA Update Notification Banner ---- */
+.pwa-update-banner {
+    position: fixed;
+    top: 16px;
+    left: 14px;
+    right: 14px;
+    z-index: 10000;
+    max-width: 480px;
+    margin: 0 auto;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+}
+
+.pwa-update-banner.hidden {
+    display: none;
+    transform: translateY(-40px);
+    opacity: 0;
+}
+
+.pwa-update-banner.visible {
+    display: block;
+    transform: translateY(0);
+    opacity: 1;
+    animation: bannerSlideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bannerSlideDown {
+    from {
+        transform: translateY(-40px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.pwa-update-card {
+    background: rgba(20, 23, 33, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1.5px solid var(--gold);
+    border-radius: var(--r-lg);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(235, 168, 50, 0.25);
+}
+
+.pwa-update-icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+    animation: pulseIcon 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseIcon {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+.pwa-update-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pwa-update-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1.2;
+}
+
+.pwa-update-desc {
+    font-size: 0.74rem;
+    color: var(--text-2);
+    line-height: 1.25;
+}
+
+.pwa-update-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.btn-update-now {
+    background: var(--gold);
+    color: #1a1200;
+    border: none;
+    border-radius: var(--r-full);
+    padding: 8px 16px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.15s ease, background 0.15s ease;
+    font-family: inherit;
+    box-shadow: 0 2px 8px rgba(235, 168, 50, 0.4);
+}
+
+.btn-update-now:active {
+    transform: scale(0.94);
+}
+
+.btn-update-dismiss {
+    background: transparent;
+    border: none;
+    color: var(--text-3);
+    font-size: 1.2rem;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--r-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.btn-update-dismiss:hover,
+.btn-update-dismiss:active {
+    color: var(--text);
+}
+
+/* Home Version Footer */
+.app-version-footer {
+    padding: 24px 16px 40px;
+    text-align: center;
+}
+
+.btn-check-update {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--r-full);
+    padding: 8px 16px;
+    color: var(--text-3);
+    font-size: 0.75rem;
+    font-family: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.2s ease;
+}
+
+.btn-check-update:hover,
+.btn-check-update:active {
+    background: rgba(235, 168, 50, 0.08);
+    border-color: var(--gold-mid);
+    color: var(--text-2);
+}
+
+.btn-check-update strong {
+    color: var(--gold);
+}
+
+.update-spin-icon.spinning {
+    display: inline-block;
+    animation: spinIcon 0.8s linear infinite;
+}
+
+@keyframes spinIcon {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.header-action-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: var(--r-full);
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.header-action-btn:active {
+    background: var(--gold-dim);
+    color: var(--gold);
+    transform: scale(0.92);
 }

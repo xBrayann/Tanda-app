@@ -6,7 +6,7 @@
     <meta name="description" content="Gestor de tanda - Control fácil de tandas">
 
     <!-- PWA Theme -->
-    <meta name="theme-color" content="#6c63ff">
+    <meta name="theme-color" content="#0d0f14">
     <meta name="mobile-web-app-capable" content="yes">
 
     <!-- iOS PWA (instalación en iPhone/iPad) -->
@@ -20,12 +20,12 @@
     <title>Gestor de Tanda</title>
 
     <!-- Versioning: cambia APP_VER para forzar recarga en clientes -->
-    <script>const APP_VER = '4.2.0';</script>
+    <script>const APP_VER = '4.3.0';</script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=4.2.0">
+    <link rel="stylesheet" href="styles.css?v=4.3.0">
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
 </head>
@@ -56,6 +56,7 @@
                             <p class="header-subtitle" id="header-date"></p>
                         </div>
                     </div>
+                    <button class="header-action-btn" onclick="checkForAppUpdate(true)" title="Buscar actualizaciones" id="btn-header-update"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg></button>
                 </div>
             </header>
 
@@ -89,6 +90,14 @@
 
                 <!-- Tanda Cards List -->
                 <div id="tandas-list" class="tandas-list hidden"></div>
+
+                <!-- App Version / Update Check Footer -->
+                <div class="app-version-footer">
+                    <button class="btn-check-update" onclick="checkForAppUpdate(true)" title="Comprobar si hay actualizaciones">
+                        <span class="update-spin-icon" id="update-spin-icon">🔄</span>
+                        <span>Versión <strong id="app-version-display">v4.3.0</strong> · Buscar actualización</span>
+                    </button>
+                </div>
             </main>
 
             <!-- FAB Button -->
@@ -241,35 +250,178 @@
             </div>
         </div>
 
+        <!-- Floating PWA Update Notification Banner -->
+        <div id="pwa-update-banner" class="pwa-update-banner hidden" role="alert">
+            <div class="pwa-update-card">
+                <div class="pwa-update-icon">⚡</div>
+                <div class="pwa-update-info">
+                    <span class="pwa-update-title">¡Nueva versión disponible!</span>
+                    <span class="pwa-update-desc">Hay mejoras disponibles para instalar.</span>
+                </div>
+                <div class="pwa-update-actions">
+                    <button class="btn-update-now" id="btn-update-pwa" onclick="applyAppUpdate()">Actualizar</button>
+                    <button class="btn-update-dismiss" onclick="dismissUpdateBanner()" aria-label="Cerrar">&times;</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Toast Container -->
         <div id="toast-container" class="toast-container"></div>
     </div>
 
-    <script src="app.js?v=4.2.0"></script>
+    <script src="app.js?v=4.3.0"></script>
 
-    <!-- Registro del Service Worker -->
+    <!-- Registro del Service Worker & PWA Update Manager -->
     <script>
+        let swRegistration = null;
+        let waitingWorker = null;
+        let isRefreshing = false;
+
+        // Auto-recarga cuando el nuevo SW toma el control
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!isRefreshing) {
+                    isRefreshing = true;
+                    window.location.reload();
+                }
+            });
+        }
+
+        function showUpdateBanner(worker) {
+            waitingWorker = worker;
+            const banner = document.getElementById('pwa-update-banner');
+            if (banner) {
+                banner.classList.remove('hidden');
+                banner.classList.add('visible');
+            }
+        }
+
+        function dismissUpdateBanner() {
+            const banner = document.getElementById('pwa-update-banner');
+            if (banner) {
+                banner.classList.remove('visible');
+                banner.classList.add('hidden');
+            }
+        }
+
+        async function applyAppUpdate() {
+            const btn = document.getElementById('btn-update-pwa');
+            if (btn) {
+                btn.textContent = 'Actualizando...';
+                btn.disabled = true;
+            }
+
+            // 1. Notificar al SW en espera que tome el control
+            if (waitingWorker) {
+                waitingWorker.postMessage('SKIP_WAITING');
+            } else if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage('SKIP_WAITING');
+            }
+
+            // 2. Limpiar cachés viejos
+            try {
+                if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(k => caches.delete(k)));
+                }
+            } catch (e) {
+                console.warn('Error limpiando caches:', e);
+            }
+
+            // 3. Fallback recarga
+            setTimeout(() => {
+                if (!isRefreshing) {
+                    isRefreshing = true;
+                    window.location.reload();
+                }
+            }, 600);
+        }
+
+        async function checkForAppUpdate(manual = false) {
+            const icon = document.getElementById('update-spin-icon');
+            if (icon) icon.classList.add('spinning');
+
+            if (manual && typeof showToast === 'function') {
+                showToast('Buscando actualizaciones...', 'info');
+            }
+
+            if (!('serviceWorker' in navigator)) {
+                if (icon) icon.classList.remove('spinning');
+                if (manual && typeof showToast === 'function') {
+                    showToast('Tu navegador no admite actualizaciones', 'info');
+                }
+                return;
+            }
+
+            try {
+                if (!swRegistration) {
+                    swRegistration = await navigator.serviceWorker.getRegistration();
+                }
+
+                if (swRegistration) {
+                    if (swRegistration.waiting) {
+                        showUpdateBanner(swRegistration.waiting);
+                        if (icon) icon.classList.remove('spinning');
+                        return;
+                    }
+
+                    await swRegistration.update();
+
+                    setTimeout(() => {
+                        if (icon) icon.classList.remove('spinning');
+                        if (swRegistration.waiting) {
+                            showUpdateBanner(swRegistration.waiting);
+                        } else if (manual && typeof showToast === 'function') {
+                            showToast('¡Ya tienes la versión más reciente! (v4.3.0)', 'success');
+                        }
+                    }, 1400);
+                } else {
+                    if (icon) icon.classList.remove('spinning');
+                    if (manual && typeof showToast === 'function') {
+                        showToast('¡Tienes la versión más reciente! (v4.3.0)', 'success');
+                    }
+                }
+            } catch (err) {
+                if (icon) icon.classList.remove('spinning');
+                console.warn('Error al verificar actualización:', err);
+                if (manual && typeof showToast === 'function') {
+                    showToast('No se pudo comprobar la conexión', 'error');
+                }
+            }
+        }
+
+        // Registrar Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
-                    const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+                    const reg = await navigator.serviceWorker.register('./sw.js?v=4.3.0', { scope: './' });
+                    swRegistration = reg;
                     console.log('[PWA] Service Worker registrado:', reg.scope);
 
-                    // Detectar actualizaciones disponibles
+                    // A. Actualización lista
+                    if (reg.waiting) {
+                        showUpdateBanner(reg.waiting);
+                    }
+
+                    // B. Actualización en proceso de descarga
                     reg.addEventListener('updatefound', () => {
                         const newWorker = reg.installing;
+                        if (!newWorker) return;
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // Hay una nueva versión disponible
-                                if (confirm('¡Hay una nueva versión disponible! ¿Actualizar ahora?')) {
-                                    newWorker.postMessage('SKIP_WAITING');
-                                    window.location.reload();
-                                }
+                                showUpdateBanner(newWorker);
                             }
                         });
                     });
+
+                    // C. Auto-verificar actualización al volver a la app
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'visible') {
+                            reg.update().catch(() => {});
+                        }
+                    });
                 } catch (err) {
-                    console.warn('[PWA] Service Worker no pudo registrarse:', err);
+                    console.warn('[PWA] Error al registrar SW:', err);
                 }
             });
         }
