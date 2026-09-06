@@ -1,17 +1,17 @@
 /* ================================================
    SERVICE WORKER - Gestor de Tanda
-   v4.3.0
+   v4.3.1
    ================================================ */
 
-const APP_VERSION = '4.3.0';
+const APP_VERSION = '4.3.1';
 const CACHE_NAME = 'tanda-cache-v' + APP_VERSION;
 
 // Archivos a cachear para offline
 const ASSETS = [
     './',
     './index.html',
-    './styles.css?v=4.3.0',
-    './app.js?v=4.3.0',
+    './styles.css?v=4.3.1',
+    './app.js?v=4.3.1',
     './manifest.json',
     './icon-192.png',
     './icon-512.png',
@@ -95,7 +95,7 @@ self.addEventListener('fetch', event => {
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                 }
                 return response;
-            }).catch(() => {});
+            }).catch(() => { });
 
             return cached || networkFetch;
         })
