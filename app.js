@@ -1,5 +1,5 @@
 /* ================================================
-   MI TANDA - Application Logic
+   GESTOR DE TANDA - Application Logic v2.0
    ================================================ */
 
 // ---- State ----
@@ -10,27 +10,28 @@ let currentTandaId = null;
 let editingTandaId = null;
 let modalAction = null;
 
-// ---- Day names in Spanish ----
+// ---- Day / Month names ----
 const DAYS_ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MONTHS_ES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const MONTHS_FULL = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const FREQ_LABELS = { weekly: 'Semanal', biweekly: 'Quincenal', monthly: 'Mensual' };
+
+// Status cycle: '' → 'paid' → 'card' → 'received' → ''
+const STATUS_CYCLE = ['', 'paid', 'card', 'received'];
+const STATUS_CONTENT = { '': '', paid: '✓', card: 'C', received: '★' };
+const STATUS_LABEL   = { '': 'Pendiente', paid: 'Entregado', card: 'Tarjeta', received: 'Recibido' };
 
 // ---- Initialize ----
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     updateHeaderDate();
 
-    // Show participants when people count changes
     document.getElementById('tanda-people').addEventListener('input', onPeopleCountChange);
 
-    // Splash screen — fast for low-end phones
     setTimeout(() => {
         document.getElementById('splash-screen').classList.add('fade-out');
         document.getElementById('app').classList.remove('hidden');
-        setTimeout(() => {
-            document.getElementById('splash-screen').style.display = 'none';
-        }, 500);
+        setTimeout(() => { document.getElementById('splash-screen').style.display = 'none'; }, 500);
     }, 800);
 
     renderHome();
@@ -40,9 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function loadData() {
     try {
         const stored = localStorage.getItem('mitanda_data');
-        if (stored) {
-            tandas = JSON.parse(stored);
-        }
+        if (stored) tandas = JSON.parse(stored);
     } catch (e) {
         tandas = [];
     }
@@ -59,10 +58,8 @@ function generateId() {
 
 function updateHeaderDate() {
     const now = new Date();
-    const day = DAYS_ES[now.getDay()];
-    const date = now.getDate();
-    const month = MONTHS_FULL[now.getMonth()];
-    document.getElementById('header-date').textContent = `${day} ${date} de ${month}`;
+    document.getElementById('header-date').textContent =
+        `${DAYS_ES[now.getDay()]} ${now.getDate()} de ${MONTHS_FULL[now.getMonth()]}`;
 }
 
 function formatDateShort(dateStr) {
@@ -83,41 +80,31 @@ function getDayName(dateStr) {
 function calculateDates(startDate, count, frequency) {
     const dates = [];
     const start = new Date(startDate + 'T12:00:00');
-    
     for (let i = 0; i < count; i++) {
         const d = new Date(start);
         switch (frequency) {
-            case 'weekly':
-                d.setDate(start.getDate() + (i * 7));
-                break;
-            case 'biweekly':
-                d.setDate(start.getDate() + (i * 14));
-                break;
-            case 'monthly':
-                d.setMonth(start.getMonth() + i);
-                break;
+            case 'weekly':   d.setDate(start.getDate() + i * 7); break;
+            case 'biweekly': d.setDate(start.getDate() + i * 14); break;
+            case 'monthly':  d.setMonth(start.getMonth() + i); break;
         }
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
-        dates.push(`${year}-${month}-${day}`);
+        dates.push(`${y}-${m}-${day}`);
     }
     return dates;
-}
-
-function isCurrentOrPastDate(dateStr) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const d = new Date(dateStr + 'T12:00:00');
-    d.setHours(0, 0, 0, 0);
-    return d <= today;
 }
 
 function isCurrentWeek(dateStr) {
     const today = new Date();
     const d = new Date(dateStr + 'T12:00:00');
-    const diffDays = Math.abs(Math.floor((today - d) / (1000 * 60 * 60 * 24)));
-    return diffDays <= 3;
+    return Math.abs(Math.floor((today - d) / 86400000)) <= 3;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // ---- Navigation ----
@@ -141,7 +128,6 @@ function showToast(message, type = 'success') {
     const icons = { success: '✓', error: '✕', info: 'ℹ' };
     toast.innerHTML = `<span>${icons[type] || '✓'}</span> ${message}`;
     container.appendChild(toast);
-    
     setTimeout(() => {
         toast.classList.add('fade-out');
         setTimeout(() => toast.remove(), 300);
@@ -173,7 +159,6 @@ function renderHome() {
     const tandasList = document.getElementById('tandas-list');
     const fabAdd = document.getElementById('fab-add');
 
-    // Update stats
     const totalPeople = tandas.reduce((sum, t) => sum + t.participants.length, 0);
     const totalProgress = calculateTotalProgress();
     document.getElementById('stat-tandas').textContent = tandas.length;
@@ -189,17 +174,10 @@ function renderHome() {
         emptyState.classList.add('hidden');
         tandasList.classList.remove('hidden');
         document.getElementById('stats-bar').classList.remove('hidden');
-
-        if (tandas.length < MAX_TANDAS) {
-            fabAdd.classList.remove('hidden');
-        } else {
-            fabAdd.classList.add('hidden');
-        }
+        fabAdd.classList.toggle('hidden', tandas.length >= MAX_TANDAS);
 
         tandasList.innerHTML = '';
-        tandas.forEach((tanda, index) => {
-            tandasList.appendChild(createTandaCard(tanda, index));
-        });
+        tandas.forEach((tanda, index) => tandasList.appendChild(createTandaCard(tanda, index)));
 
         if (tandas.length >= MAX_TANDAS) {
             const warning = document.createElement('div');
@@ -212,15 +190,13 @@ function renderHome() {
 
 function calculateTotalProgress() {
     if (tandas.length === 0) return 0;
-    let totalCells = 0;
-    let filledCells = 0;
+    let totalCells = 0, filledCells = 0;
     tandas.forEach(t => {
-        const numDates = t.participants.length;
-        t.participants.forEach((p, pi) => {
-            for (let di = 0; di < numDates; di++) {
+        const n = t.participants.length;
+        t.participants.forEach((_, pi) => {
+            for (let di = 0; di < n; di++) {
                 totalCells++;
-                const key = `${pi}-${di}`;
-                if (t.status && t.status[key]) filledCells++;
+                if (t.status && t.status[`${pi}-${di}`]) filledCells++;
             }
         });
     });
@@ -228,13 +204,11 @@ function calculateTotalProgress() {
 }
 
 function calculateTandaProgress(tanda) {
-    const numDates = tanda.participants.length;
-    let total = numDates * tanda.participants.length;
-    let filled = 0;
-    tanda.participants.forEach((p, pi) => {
-        for (let di = 0; di < numDates; di++) {
-            const key = `${pi}-${di}`;
-            if (tanda.status && tanda.status[key]) filled++;
+    const n = tanda.participants.length;
+    let total = n * n, filled = 0;
+    tanda.participants.forEach((_, pi) => {
+        for (let di = 0; di < n; di++) {
+            if (tanda.status && tanda.status[`${pi}-${di}`]) filled++;
         }
     });
     return total > 0 ? Math.round((filled / total) * 100) : 0;
@@ -258,8 +232,7 @@ function createTandaCard(tanda, index) {
         </div>
         <div class="tanda-card-meta">
             <span class="tanda-meta-item"><span class="meta-icon">👥</span> ${tanda.participants.length} personas</span>
-            <span class="tanda-meta-item"><span class="meta-icon">💵</span> $${tanda.amount.toLocaleString()}</span>
-            <span class="tanda-meta-item"><span class="meta-icon">📅</span> ${FREQ_LABELS[tanda.frequency]} · ${startDay}</span>
+            <span class="tanda-meta-item"><span class="meta-icon">📅</span> Semanal</span>
             <span class="tanda-meta-item"><span class="meta-icon">🗓️</span> ${formatDateShort(dates[0])} - ${formatDateShort(dates[dates.length - 1])}</span>
         </div>
         <div class="tanda-progress-bar">
@@ -270,14 +243,7 @@ function createTandaCard(tanda, index) {
             <span>${tanda.participants.length} semanas</span>
         </div>
     `;
-
     return card;
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 // ---- Create / Edit Tanda ----
@@ -286,19 +252,15 @@ function showCreateTanda() {
         showToast('Máximo 3 tandas permitidas', 'error');
         return;
     }
-
     editingTandaId = null;
     document.getElementById('create-title').textContent = 'Nueva Tanda';
     document.getElementById('btn-save-tanda').innerHTML = '<span class="btn-icon">✓</span> Crear Tanda';
     document.getElementById('tanda-form').reset();
     document.getElementById('participants-section').style.display = 'none';
-    
-    // Set default date to today
+
     const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    document.getElementById('tanda-start').value = `${yyyy}-${mm}-${dd}`;
+    document.getElementById('tanda-start').value =
+        `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
     showScreen('screen-create');
 }
@@ -312,16 +274,10 @@ function editCurrentTanda() {
     document.getElementById('btn-save-tanda').innerHTML = '<span class="btn-icon">✓</span> Guardar Cambios';
 
     document.getElementById('tanda-name').value = tanda.name;
-    document.getElementById('tanda-amount').value = tanda.amount;
     document.getElementById('tanda-people').value = tanda.participants.length;
     document.getElementById('tanda-start').value = tanda.startDate;
-    
-    const freqRadio = document.querySelector(`input[name="frequency"][value="${tanda.frequency}"]`);
-    if (freqRadio) freqRadio.checked = true;
 
-    // Build participants list
     buildParticipantsList(tanda.participants.length, tanda.participants);
-
     showScreen('screen-create');
 }
 
@@ -334,6 +290,7 @@ function onPeopleCountChange(e) {
     }
 }
 
+// ---- Participants List (with add/remove buttons) ----
 function buildParticipantsList(count, existingNames = []) {
     const section = document.getElementById('participants-section');
     const list = document.getElementById('participants-list');
@@ -341,31 +298,232 @@ function buildParticipantsList(count, existingNames = []) {
     list.innerHTML = '';
 
     for (let i = 0; i < count; i++) {
-        const row = document.createElement('div');
-        row.className = 'participant-row';
-        const name = existingNames[i] || '';
-        row.innerHTML = `
-            <span class="participant-number">${i + 1}</span>
-            <input type="text" class="participant-input" 
-                   placeholder="Participante ${i + 1}" 
-                   value="${escapeHtml(name)}" 
-                   data-index="${i}"
-                   maxlength="30">
-        `;
-        list.appendChild(row);
+        addParticipantRow(list, i, existingNames[i] || '');
     }
+
+    refreshParticipantNumbers();
+}
+
+function addParticipantRow(container, index, name) {
+    const row = document.createElement('div');
+    row.className = 'participant-row';
+    row.dataset.index = index;
+    row.draggable = true;
+    row.innerHTML = `
+        <span class="drag-handle" title="Arrastra para cambiar orden">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="8" y1="6" x2="16" y2="6"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+                <line x1="8" y1="18" x2="16" y2="18"/>
+            </svg>
+        </span>
+        <span class="participant-number">${index + 1}</span>
+        <input type="text" class="participant-input"
+               placeholder="Participante ${index + 1}"
+               value="${escapeHtml(name)}"
+               maxlength="30">
+        <button type="button" class="btn-remove-participant" onclick="removeParticipantRow(this)" title="Eliminar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    `;
+
+    // ---- Desktop drag events ----
+    row.addEventListener('dragstart', onDragStart);
+    row.addEventListener('dragend',   onDragEnd);
+    row.addEventListener('dragover',  onDragOver);
+    row.addEventListener('drop',      onDrop);
+
+    // ---- Touch events (mobile) ----
+    const handle = row.querySelector('.drag-handle');
+    handle.addEventListener('touchstart', onTouchStart, { passive: false });
+
+    container.appendChild(row);
+}
+
+function removeParticipantRow(btn) {
+    const list = document.getElementById('participants-list');
+    const rows = list.querySelectorAll('.participant-row');
+    if (rows.length <= 2) {
+        showToast('Mínimo 2 participantes', 'error');
+        return;
+    }
+    btn.closest('.participant-row').remove();
+    refreshParticipantNumbers();
+    syncCounterField();
+}
+
+function addParticipant() {
+    const list = document.getElementById('participants-list');
+    const rows = list.querySelectorAll('.participant-row');
+    if (rows.length >= MAX_PEOPLE) {
+        showToast(`Máximo ${MAX_PEOPLE} participantes`, 'error');
+        return;
+    }
+    const newIndex = rows.length;
+    addParticipantRow(list, newIndex, '');
+    refreshParticipantNumbers();
+    syncCounterField();
+    // Focus new input
+    list.querySelectorAll('.participant-input')[newIndex]?.focus();
+}
+
+function refreshParticipantNumbers() {
+    const list = document.getElementById('participants-list');
+    list.querySelectorAll('.participant-row').forEach((row, i) => {
+        row.querySelector('.participant-number').textContent = i + 1;
+        row.querySelector('.participant-input').placeholder = `Participante ${i + 1}`;
+        row.dataset.index = i;
+    });
+}
+
+function syncCounterField() {
+    const list = document.getElementById('participants-list');
+    const count = list.querySelectorAll('.participant-row').length;
+    document.getElementById('tanda-people').value = count;
+}
+
+// ---- Drag & Drop (Desktop) ----
+let _dragSrc = null;
+
+function onDragStart(e) {
+    _dragSrc = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+}
+
+function onDragEnd() {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.participant-row').forEach(r => r.classList.remove('drag-over'));
+}
+
+function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.participant-row').forEach(r => r.classList.remove('drag-over'));
+    if (this !== _dragSrc) this.classList.add('drag-over');
+    return false;
+}
+
+function onDrop(e) {
+    e.stopPropagation();
+    if (_dragSrc && _dragSrc !== this) {
+        const list = this.parentNode;
+        const rows = [...list.querySelectorAll('.participant-row')];
+        const srcIdx  = rows.indexOf(_dragSrc);
+        const destIdx = rows.indexOf(this);
+        if (srcIdx < destIdx) {
+            list.insertBefore(_dragSrc, this.nextSibling);
+        } else {
+            list.insertBefore(_dragSrc, this);
+        }
+        refreshParticipantNumbers();
+    }
+    return false;
+}
+
+// ---- Touch Drag (Mobile) ----
+let _touchRow = null;
+ let _touchClone = null;
+let _touchOffsetY = 0;
+
+function onTouchStart(e) {
+    const row = this.closest('.participant-row');
+    _touchRow = row;
+    const touch = e.touches[0];
+    const rect = row.getBoundingClientRect();
+    _touchOffsetY = touch.clientY - rect.top;
+
+    // Create visual clone
+    _touchClone = row.cloneNode(true);
+    _touchClone.style.cssText = `
+        position: fixed;
+        left: ${rect.left}px;
+        top: ${rect.top}px;
+        width: ${rect.width}px;
+        opacity: 0.85;
+        pointer-events: none;
+        z-index: 9999;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        background: var(--bg-card-hover);
+        transition: none;
+    `;
+    document.body.appendChild(_touchClone);
+    row.classList.add('dragging');
+
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend',  onTouchEnd);
+    e.preventDefault();
+}
+
+function onTouchMove(e) {
+    if (!_touchClone || !_touchRow) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const y = touch.clientY - _touchOffsetY;
+    _touchClone.style.top = y + 'px';
+
+    // Find the row under the finger
+    _touchClone.style.display = 'none';
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    _touchClone.style.display = '';
+    const target = el?.closest('.participant-row');
+
+    document.querySelectorAll('.participant-row').forEach(r => r.classList.remove('drag-over'));
+    if (target && target !== _touchRow) target.classList.add('drag-over');
+}
+
+function onTouchEnd(e) {
+    if (!_touchRow) return;
+    const touch = e.changedTouches[0];
+
+    // Find drop target
+    _touchClone.style.display = 'none';
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    _touchClone.style.display = '';
+    const target = el?.closest('.participant-row');
+
+    if (target && target !== _touchRow) {
+        const list = _touchRow.parentNode;
+        const rows = [...list.querySelectorAll('.participant-row')];
+        const srcIdx  = rows.indexOf(_touchRow);
+        const destIdx = rows.indexOf(target);
+        if (srcIdx < destIdx) {
+            list.insertBefore(_touchRow, target.nextSibling);
+        } else {
+            list.insertBefore(_touchRow, target);
+        }
+        refreshParticipantNumbers();
+    }
+
+    // Cleanup
+    _touchRow.classList.remove('dragging');
+    document.querySelectorAll('.participant-row').forEach(r => r.classList.remove('drag-over'));
+    _touchClone.remove();
+    _touchClone = null;
+    _touchRow = null;
+    document.removeEventListener('touchmove', onTouchMove);
+    document.removeEventListener('touchend',  onTouchEnd);
 }
 
 function saveTanda(e) {
     e.preventDefault();
 
     const name = document.getElementById('tanda-name').value.trim();
-    const amount = parseFloat(document.getElementById('tanda-amount').value);
-    const peopleCount = parseInt(document.getElementById('tanda-people').value);
     const startDate = document.getElementById('tanda-start').value;
-    const frequency = document.querySelector('input[name="frequency"]:checked').value;
+    const frequency = 'weekly'; // siempre semanal
 
-    if (!name || !amount || !peopleCount || !startDate) {
+    // Gather participants from DOM
+    const participantInputs = document.querySelectorAll('.participant-input');
+    const participants = [];
+    participantInputs.forEach((input, i) => {
+        participants.push(input.value.trim() || `Persona ${i + 1}`);
+    });
+
+    const peopleCount = participants.length;
+
+    if (!name || !startDate) {
         showToast('Completa todos los campos', 'error');
         return;
     }
@@ -375,22 +533,12 @@ function saveTanda(e) {
         return;
     }
 
-    // Gather participant names
-    const participantInputs = document.querySelectorAll('.participant-input');
-    const participants = [];
-    for (let i = 0; i < peopleCount; i++) {
-        const input = participantInputs[i];
-        const pName = input ? input.value.trim() : '';
-        participants.push(pName || `Persona ${i + 1}`);
-    }
-
     if (editingTandaId) {
-        // Update existing
         const tanda = tandas.find(t => t.id === editingTandaId);
         if (tanda) {
             const oldCount = tanda.participants.length;
             tanda.name = name;
-            tanda.amount = amount;
+            tanda.amount = 0;
             tanda.startDate = startDate;
             tanda.frequency = frequency;
             tanda.participants = participants;
@@ -400,9 +548,7 @@ function saveTanda(e) {
                 const newStatus = {};
                 Object.keys(tanda.status || {}).forEach(key => {
                     const [pi, di] = key.split('-').map(Number);
-                    if (pi < peopleCount && di < peopleCount) {
-                        newStatus[key] = tanda.status[key];
-                    }
+                    if (pi < peopleCount && di < peopleCount) newStatus[key] = tanda.status[key];
                 });
                 tanda.status = newStatus;
             }
@@ -412,11 +558,10 @@ function saveTanda(e) {
             openTandaDetail(tanda.id);
         }
     } else {
-        // Create new
         const tanda = {
             id: generateId(),
             name,
-            amount,
+            amount: 0,
             startDate,
             frequency,
             participants,
@@ -438,8 +583,6 @@ function openTandaDetail(tandaId) {
     currentTandaId = tandaId;
     document.getElementById('detail-title').textContent = tanda.name;
     document.getElementById('detail-people-count').textContent = tanda.participants.length;
-    document.getElementById('detail-amount').textContent = tanda.amount.toLocaleString();
-    document.getElementById('detail-frequency').textContent = FREQ_LABELS[tanda.frequency];
 
     renderGrid(tanda);
     showScreen('screen-detail');
@@ -450,8 +593,8 @@ function renderGrid(tanda) {
     const thead = document.getElementById('grid-head');
     const tbody = document.getElementById('grid-body');
 
-    // Build header
-    let headerHtml = '<tr><th>#  Participante</th>';
+    // Header
+    let headerHtml = '<tr><th># Participante</th>';
     dates.forEach((date, di) => {
         const isNow = isCurrentWeek(date);
         headerHtml += `<th class="date-header ${isNow ? 'current-week' : ''}">
@@ -462,14 +605,10 @@ function renderGrid(tanda) {
     headerHtml += '</tr>';
     thead.innerHTML = headerHtml;
 
-    // Build body
+    // Body
     let bodyHtml = '';
     tanda.participants.forEach((participant, pi) => {
-        // The person at index pi receives on date pi (their turn)
-        const isReceiver = true; // everyone has a turn
-        bodyHtml += `<tr class="${''}" id="row-${pi}">`;
-        
-        // Participant cell
+        bodyHtml += `<tr id="row-${pi}">`;
         bodyHtml += `<td>
             <div class="grid-participant">
                 <span class="grid-participant-num">${pi + 1}</span>
@@ -477,32 +616,20 @@ function renderGrid(tanda) {
             </div>
         </td>`;
 
-        // Date cells
         dates.forEach((date, di) => {
             const key = `${pi}-${di}`;
             const status = (tanda.status && tanda.status[key]) || '';
-            let cellClass = 'status-cell';
-            let cellContent = '';
-            let tooltip = 'Pendiente';
-
-            if (status === 'paid') {
-                cellClass += ' paid';
-                cellContent = '✓';
-                tooltip = 'Entregado';
-            } else if (status === 'received') {
-                cellClass += ' received';
-                cellContent = '★';
-                tooltip = 'Recibido';
-            }
-
-            // Highlight if this person receives on this date
+            const content = STATUS_CONTENT[status] || '';
+            const label = STATUS_LABEL[status] || 'Pendiente';
             const isReceiverTurn = (pi === di);
 
+            let cellClass = `status-cell${status ? ' ' + status : ''}`;
+
             bodyHtml += `<td${isReceiverTurn ? ' style="position:relative"' : ''}>
-                <button class="${cellClass}" 
+                <button class="${cellClass}"
                         onclick="toggleStatus('${tanda.id}', ${pi}, ${di}, this)"
-                        title="${tooltip}">
-                    ${cellContent}
+                        title="${label}">
+                    ${content}
                 </button>
                 ${isReceiverTurn ? '<span class="receiver-badge">Recibe</span>' : ''}
             </td>`;
@@ -514,24 +641,18 @@ function renderGrid(tanda) {
     tbody.innerHTML = bodyHtml;
 }
 
-function toggleStatus(tandaId, participantIndex, dateIndex, btn) {
+// ---- Toggle Status (cycle: '' → paid → card → received → '') ----
+function toggleStatus(tandaId, pi, di, btn) {
     const tanda = tandas.find(t => t.id === tandaId);
     if (!tanda) return;
 
-    const key = `${participantIndex}-${dateIndex}`;
+    const key = `${pi}-${di}`;
     if (!tanda.status) tanda.status = {};
 
     const current = tanda.status[key] || '';
-    let next = '';
-    
-    // Cycle: empty → paid → received → empty
-    if (current === '') {
-        next = 'paid';
-    } else if (current === 'paid') {
-        next = 'received';
-    } else {
-        next = '';
-    }
+    const currentIdx = STATUS_CYCLE.indexOf(current);
+    const nextIdx = (currentIdx + 1) % STATUS_CYCLE.length;
+    const next = STATUS_CYCLE[nextIdx];
 
     if (next) {
         tanda.status[key] = next;
@@ -541,23 +662,11 @@ function toggleStatus(tandaId, participantIndex, dateIndex, btn) {
 
     saveData();
 
-    // Update button appearance with animation
-    btn.className = 'status-cell';
-    btn.textContent = '';
-    btn.title = 'Pendiente';
-
-    if (next === 'paid') {
-        btn.classList.add('paid', 'pop');
-        btn.textContent = '✓';
-        btn.title = 'Entregado';
-    } else if (next === 'received') {
-        btn.classList.add('received', 'pop');
-        btn.textContent = '★';
-        btn.title = 'Recibido';
-    } else {
-        btn.classList.add('pop');
-    }
-
+    // Update button
+    btn.className = `status-cell${next ? ' ' + next : ''}`;
+    btn.textContent = STATUS_CONTENT[next] || '';
+    btn.title = STATUS_LABEL[next] || 'Pendiente';
+    btn.classList.add('pop');
     setTimeout(() => btn.classList.remove('pop'), 300);
 }
 
@@ -565,10 +674,9 @@ function toggleStatus(tandaId, participantIndex, dateIndex, btn) {
 function confirmDeleteTanda() {
     const tanda = tandas.find(t => t.id === currentTandaId);
     if (!tanda) return;
-
     showModal(
         'Eliminar Tanda',
-        `¿Estás seguro de que deseas eliminar "${tanda.name}"? Esta acción no se puede deshacer.`,
+        `¿Eliminar "${tanda.name}"? Esta acción no se puede deshacer.`,
         'Eliminar',
         () => {
             tandas = tandas.filter(t => t.id !== currentTandaId);
@@ -579,28 +687,23 @@ function confirmDeleteTanda() {
     );
 }
 
-// ---- Export Tanda as PNG ----
+// ---- Export PNG ----
 function exportTandaPNG() {
     const tanda = tandas.find(t => t.id === currentTandaId);
     if (!tanda) return;
 
     const btn = document.getElementById('btn-export-png');
     btn.classList.add('exporting');
-    btn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-        Generando...
-    `;
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Generando...`;
 
     const dates = calculateDates(tanda.startDate, tanda.participants.length, tanda.frequency);
     const captureContainer = document.getElementById('capture-container');
-    
-    // Build header row
+
     let tableHeader = '<th>Participante</th>';
     dates.forEach(date => {
         tableHeader += `<th>${formatDateShort(date)}<span class="date-day">${getDayName(date)}</span></th>`;
     });
 
-    // Build body rows
     let tableBody = '';
     tanda.participants.forEach((participant, pi) => {
         tableBody += '<tr>';
@@ -622,6 +725,9 @@ function exportTandaPNG() {
             if (status === 'paid') {
                 statusClass = 'capture-status capture-status-paid';
                 statusContent = '✓';
+            } else if (status === 'card') {
+                statusClass = 'capture-status capture-status-card';
+                statusContent = 'C';
             } else if (status === 'received') {
                 statusClass = 'capture-status capture-status-received';
                 statusContent = '★';
@@ -636,7 +742,6 @@ function exportTandaPNG() {
         tableBody += '</tr>';
     });
 
-    // Only the table, nothing else
     captureContainer.innerHTML = `
         <div class="capture-card">
             <table class="capture-table">
@@ -646,10 +751,8 @@ function exportTandaPNG() {
         </div>
     `;
 
-    // Wait a frame for layout then capture
     requestAnimationFrame(() => {
         const captureEl = captureContainer.querySelector('.capture-card');
-
         html2canvas(captureEl, {
             backgroundColor: '#0d0f14',
             scale: 2,
@@ -659,12 +762,7 @@ function exportTandaPNG() {
             height: captureEl.scrollHeight,
         }).then(canvas => {
             canvas.toBlob(blob => {
-                if (!blob) {
-                    showToast('Error al generar imagen', 'error');
-                    resetExportBtn();
-                    return;
-                }
-
+                if (!blob) { showToast('Error al generar imagen', 'error'); resetExportBtn(); return; }
                 downloadBlob(blob, `tanda-${tanda.name.replace(/\s+/g, '-').toLowerCase()}.png`);
                 showToast('Imagen descargada ✓', 'info');
                 resetExportBtn();
@@ -691,8 +789,5 @@ function downloadBlob(blob, filename) {
 function resetExportBtn() {
     const btn = document.getElementById('btn-export-png');
     btn.classList.remove('exporting');
-    btn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-        Exportar PNG
-    `;
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> Exportar PNG`;
 }

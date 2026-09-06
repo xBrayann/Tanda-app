@@ -207,6 +207,29 @@ body {
     transform: scale(0.95);
 }
 
+/* Text edit button in detail header */
+.header-btn-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: var(--gold-dim);
+    border: 1px solid var(--gold-mid);
+    border-radius: var(--r-full);
+    color: var(--gold);
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    white-space: nowrap;
+}
+
+.header-btn-edit:active {
+    background: var(--gold-mid);
+    transform: scale(0.95);
+}
+
 /* ---- Stats Bar ---- */
 .stats-bar {
     display: grid;
@@ -576,6 +599,90 @@ body {
     gap: 10px;
 }
 
+/* Header row above participants list */
+.participants-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0;
+}
+
+/* Add participant button */
+.btn-add-participant {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 14px;
+    background: var(--gold-dim);
+    border: 1px solid var(--gold-mid);
+    border-radius: var(--r-full);
+    color: var(--gold);
+    font-family: var(--font);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+}
+
+.btn-add-participant:active { background: var(--gold-mid); }
+
+/* Remove participant button */
+.btn-remove-participant {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-full);
+    background: var(--red-dim);
+    border: 1px solid rgba(232, 84, 84, 0.2);
+    color: var(--red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+}
+
+.btn-remove-participant:active { background: rgba(232, 84, 84, 0.25); transform: scale(0.9); }
+
+/* Drag handle */
+.drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 36px;
+    color: var(--text-3);
+    cursor: grab;
+    flex-shrink: 0;
+    touch-action: none;
+    border-radius: var(--r-sm);
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.drag-handle:hover {
+    color: var(--text-2);
+    background: rgba(255,255,255,0.05);
+}
+
+.drag-handle:active { cursor: grabbing; }
+
+/* Dragging state */
+.participant-row.dragging {
+    opacity: 0.4;
+    border: 1.5px dashed var(--gold-mid);
+    border-radius: var(--r-sm);
+}
+
+/* Drop target highlight */
+.participant-row.drag-over {
+    background: var(--gold-dim);
+    border-radius: var(--r-sm);
+    outline: 2px solid var(--gold);
+    outline-offset: -2px;
+}
+
+
 .participant-number {
     min-width: 30px;
     height: 30px;
@@ -617,6 +724,7 @@ body {
     max-width: 540px;
     margin: 0 auto;
     width: 100%;
+    justify-content: center;
 }
 
 .detail-info-bar::-webkit-scrollbar { display: none; }
@@ -666,6 +774,7 @@ body {
 }
 
 .legend-paid { background: var(--green); }
+.legend-card { background: #818cf8; }
 .legend-received { background: var(--gold); }
 
 /* ---- Detail: Grid ---- */
@@ -824,6 +933,15 @@ body {
     background: var(--green-dim);
     border-color: var(--green-border);
     color: var(--green);
+}
+
+.status-cell.card {
+    background: rgba(99, 102, 241, 0.14);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #818cf8;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.01em;
 }
 
 .status-cell.received {
@@ -1061,6 +1179,13 @@ body {
     background: rgba(61, 214, 140, 0.14);
     border: 1px solid rgba(61, 214, 140, 0.3);
     color: #3dd68c;
+}
+
+#capture-container .capture-status-card {
+    background: rgba(99, 102, 241, 0.14);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: #818cf8;
+    font-weight: 700;
 }
 
 #capture-container .capture-status-received {
