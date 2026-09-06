@@ -1,9 +1,9 @@
 /* ================================================
    SERVICE WORKER - Gestor de Tanda
-   v4.0.0
+   v4.2.1
    ================================================ */
 
-const APP_VERSION = '4.0.0';
+const APP_VERSION = '4.2.1';
 const CACHE_NAME = `tanda-cache-v${APP_VERSION}`;
 
 // Archivos a cachear

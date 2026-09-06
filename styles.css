@@ -536,6 +536,13 @@ body {
     gap: 14px;
 }
 
+@media (max-width: 380px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
 .input-with-prefix { position: relative; }
 
 .input-prefix {
@@ -590,13 +597,16 @@ body {
     gap: 8px;
     max-height: 400px;
     overflow-y: auto;
-    padding-right: 4px;
+    overflow-x: hidden;
+    padding-right: 0;
 }
 
 .participant-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
 }
 
 /* Header row above participants list */
@@ -631,6 +641,7 @@ body {
 .btn-remove-participant {
     width: 32px;
     height: 32px;
+    min-width: 32px;
     border-radius: var(--r-full);
     background: var(--red-dim);
     border: 1px solid rgba(232, 84, 84, 0.2);
@@ -641,6 +652,7 @@ body {
     cursor: pointer;
     flex-shrink: 0;
     transition: background 0.15s ease;
+    padding: 0;
 }
 
 .btn-remove-participant:active { background: rgba(232, 84, 84, 0.25); transform: scale(0.9); }
@@ -650,8 +662,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 36px;
+    width: 24px;
+    height: 32px;
     color: var(--text-3);
     cursor: grab;
     flex-shrink: 0;
@@ -684,8 +696,8 @@ body {
 
 
 .participant-number {
-    min-width: 30px;
-    height: 30px;
+    min-width: 26px;
+    height: 26px;
     border-radius: var(--r-full);
     background: var(--gold);
     color: #1a1200;
@@ -699,7 +711,8 @@ body {
 
 .participant-input {
     flex: 1;
-    padding: 10px 14px;
+    min-width: 0;
+    padding: 10px 12px;
     background: var(--bg-input);
     border: 1.5px solid var(--border);
     border-radius: var(--r-sm);
@@ -786,6 +799,7 @@ body {
 
 .grid-wrapper {
     overflow: auto;
+    -webkit-overflow-scrolling: touch;
     max-height: calc(100vh - 250px);
     max-height: calc(100dvh - 250px);
     padding: 0 10px;
@@ -829,7 +843,8 @@ body {
     left: 0;
     z-index: 15;
     text-align: left;
-    min-width: 120px;
+    min-width: 130px;
+    border-right: 1px solid var(--border);
     background: var(--bg-deep);
 }
 
@@ -862,7 +877,9 @@ body {
     background: var(--bg-deep);
     text-align: left;
     padding-left: 8px;
+    padding-right: 8px;
     font-weight: 500;
+    border-right: 1px solid var(--border);
 }
 
 .tanda-grid tbody tr:active td {
@@ -873,8 +890,9 @@ body {
 .grid-participant {
     display: flex;
     align-items: center;
-    gap: 7px;
-    min-width: 110px;
+    gap: 6px;
+    min-width: 0;
+    white-space: nowrap;
 }
 
 .grid-participant-num {
@@ -892,22 +910,32 @@ body {
 }
 
 .grid-participant-name {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 90px;
+}
+
+.grid-participant-date {
+    font-size: 0.62rem;
+    color: var(--text-3);
+    font-weight: 400;
+    display: block;
+    margin-top: 1px;
 }
 
 /* Receiver */
 .receiver-badge {
-    font-size: 0.58rem;
+    font-size: 0.55rem;
     background: var(--gold);
     color: #1a1200;
-    padding: 2px 5px;
+    padding: 1px 4px;
     border-radius: var(--r-full);
     font-weight: 700;
     white-space: nowrap;
+    display: inline-block;
+    margin-left: 2px;
+    vertical-align: middle;
 }
 
 /* ---- Status Cells ---- */
@@ -1236,4 +1264,72 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 @media (min-width: 768px) {
     .home-content { max-width: 540px; margin: 0 auto; }
+}
+
+/* ---- Mobile Form Improvements ---- */
+@media (max-width: 420px) {
+    .create-content {
+        padding: 16px 12px 40px;
+    }
+
+    .form-input {
+        padding: 12px 14px;
+        font-size: 0.9rem;
+    }
+
+    .participant-row {
+        gap: 5px;
+    }
+
+    .drag-handle {
+        width: 20px;
+        padding: 0;
+    }
+
+    .participant-number {
+        min-width: 24px;
+        height: 24px;
+        font-size: 0.68rem;
+    }
+
+    .participant-input {
+        padding: 9px 10px;
+        font-size: 0.84rem;
+    }
+
+    .btn-remove-participant {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+    }
+
+    .btn-remove-participant svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .participants-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .freq-label {
+        padding: 10px 6px;
+        font-size: 0.78rem;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 340px) {
+    .drag-handle {
+        display: none;
+    }
+
+    .participant-row {
+        gap: 4px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
 }

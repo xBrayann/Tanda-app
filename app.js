@@ -518,7 +518,7 @@ function saveTanda(e) {
     const participantInputs = document.querySelectorAll('.participant-input');
     const participants = [];
     participantInputs.forEach((input, i) => {
-        participants.push(input.value.trim() || `Persona ${i + 1}`);
+        participants.push(input.value.trim());
     });
 
     const peopleCount = participants.length;
@@ -598,8 +598,8 @@ function renderGrid(tanda) {
     dates.forEach((date, di) => {
         const isNow = isCurrentWeek(date);
         headerHtml += `<th class="date-header ${isNow ? 'current-week' : ''}">
-            ${formatDateShort(date)}
-            <span class="date-day">${getDayName(date)}</span>
+            S${di + 1}
+            <span class="date-day">${formatDateShort(date)}</span>
         </th>`;
     });
     headerHtml += '</tr>';
@@ -609,10 +609,15 @@ function renderGrid(tanda) {
     let bodyHtml = '';
     tanda.participants.forEach((participant, pi) => {
         bodyHtml += `<tr id="row-${pi}">`;
+        const receiveDate = dates[pi] ? formatDateShort(dates[pi]) : "";
+        const displayName = participant || "";
         bodyHtml += `<td>
             <div class="grid-participant">
                 <span class="grid-participant-num">${pi + 1}</span>
-                <span class="grid-participant-name" title="${escapeHtml(participant)}">${escapeHtml(participant)}</span>
+                <span class="grid-participant-name" title="${receiveDate} - ${escapeHtml(participant)}">
+                    ${escapeHtml(displayName)}
+                    <span class="grid-participant-date">${receiveDate}</span>
+                </span>
             </div>
         </td>`;
 
